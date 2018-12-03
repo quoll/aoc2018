@@ -1,26 +1,23 @@
 (ns day1
   (:require [clojure.string :refer [split]]))
 
+(defn lines [input-file]
+  (split (slurp input-file) #"\n"))
+
 (defn star
   [input-file]
-  (as-> input-file d
-    (slurp d)
-    (split d #"\n")
-    (map #(Integer/parseInt %) d)
-    (apply + d)))
+  (->> (lines input-file)
+       (map #(Integer/parseInt %))
+       (apply +)))
 
 (defn star2
   [input-file]
-  (as-> input-file d
-    (slurp d)
-    (split d #"\n")
-    (map #(Integer/parseInt %) d)
-    (loop [[n & rn] (cycle d) f 0 acc #{}]
+  (let [numbers (->> (lines input-file) (map #(Integer/parseInt %)))]
+    (loop [[n & rn] (cycle numbers) f 0 acc #{}]
       (let [f (+ f n)]
         (if (acc f)
           f
           (recur rn f (conj acc f)))))))
-
 
 (println (star "input1.txt"))
 (println (star2 "input1.txt"))

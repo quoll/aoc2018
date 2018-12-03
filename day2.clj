@@ -4,37 +4,40 @@
 (defn lines [input-file]
   (split (slurp input-file) #"\n"))
 
-(defn nums [s]
-  (let [cs (->> s
-                (group-by identity)
-                vals
-                (map count))]
-    [(some #(= 2 %) cs) (some #(= 3 %) cs)]))
+(defn counts [[two-count three-count] s]
+  (let [cs (-> s frequencies vals)]
+    [(if (some #(= 2 %) cs) (inc two-count) two-count)
+     (if (some #(= 3 %) cs) (inc three-count) three-count)]))
 
 (defn star
   [input-file]
-  (let [tt (->> (lines input-file)
-                (map nums))]
-    (* (count (filter first tt)) (count (filter second tt)))))
+  (let [[two-count three-count] (->> (lines input-file) (reduce counts [0 0]))]
+    (* two-count three-count)))
 
-(defn close [a b]
-  (let [sim (filter identity (map #(when (= %1 %2) %1) a b))]
-    (when (= (count sim) (dec (count a))) sim)))
+#_(defn nearly= [left right]
+  (loop [[l & xl] left [r & xr] right diffs 0]
+    (if (nil? l)
+      (apply str (filter identity (map #(#{%1} %2) left right)))
+      (if (not= l r)
+        (when (zero? diffs)
+          (recur xl xr 1))
+        (recur xl xr diffs)))))
 
-(defn cmp-close [ll]
-  (loop [[f & fr] ll]
-    (when (seq fr)
+(defn nearly= [left right]
+  (let [same (filter identity (map #(#{%1} %2) left right))]
+    (when (= (count same) (dec (count left))) (apply str same))))
+
+(defn compare-lines [ll]
+  (loop [[line & xlines] ll]
+    (when (seq line)
       (or
-        (loop [[s & sr] fr]
-          (when s
-            (or (close f s)
-                (recur sr))))
-        (recur fr)))))
+       (some (partial nearly= line) xlines)
+       (recur xlines)))))
 
 (defn star2
   [input-file]
   (let [ll (lines input-file)]
-    (apply str (cmp-close ll))))
+    (compare-lines ll)))
 
 
 (println (star "input2.txt"))
