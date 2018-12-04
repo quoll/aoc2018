@@ -34,8 +34,7 @@
 (defn star2
   [input-file]
   (let [table (build-table input-file)
-        ident-finder (max-finder identity)
-        guards-maxes (map (fn [[g tm]] [g (reduce ident-finder [0 0] tm)]) table)
+        guards-maxes (map (fn [[g tm]] [g (max-key tm (keys tm))]) table)
         [guard [minute _]] (reduce (max-finder second) [0 [0 0]] guards-maxes)]
     (* guard minute)))
 
