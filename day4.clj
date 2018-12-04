@@ -39,5 +39,5 @@
         [guard [minute _]] (reduce (max-finder second) [0 [0 0]] guards-maxes)]
     (* guard minute)))
 
-(println (time (star "input4.txt")))
-(println (time (star2 "input4.txt")))
+(println (star "input4.txt"))
+(println (star2 "input4.txt"))
