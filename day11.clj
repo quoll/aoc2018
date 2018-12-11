@@ -6,8 +6,7 @@
 
 (defn hundreds
   [^long n]
-  (let [t (* 1000 (long (/ n 1000)))]
-    (long (/ (- n t) 100))))
+  (long (/ (mod n 1000) 100)))
 
 (def power
   (memoize
@@ -15,28 +14,48 @@
      (let [rack (+ x 10)]
        (- (hundreds (* rack (+ serial (* y rack)))) 5)))))
 
+(def power-vslice
+  (memoize
+   (fn [len x y]
+     (let [ll (dec len)]
+       (if (zero? ll)
+         (power x y)
+         (+ (power-vslice ll x y) (power x (+ y ll))))))))
+
+(def power-hslice
+  (memoize
+   (fn [len x y]
+     (let [ll (dec len)]
+       (if (zero? ll)
+         (power x y)
+         (+ (power-hslice ll x y) (power (+ x ll) y)))))))
+
 (def power-at
   (memoize
    (fn [sz x y]
-     (if (< sz 4)
-       (apply + (for [yy (range y (+ y sz)) xx (range x (+ x sz))] (power xx yy)))
+     (case sz
+       1 (power x y)
+       2 (let [xx (inc x) yy (inc y)]
+           (+ (power x y) (power xx y) (power x yy) (power xx yy)))
        (if (even? sz)
          (let [block (/ sz 2)]
            (+ (power-at block x y) (power-at block (+ x block) y)
               (power-at block x (+ y block)) (power-at block (+ x block) (+ y block))))
-         (+ (power-at (dec sz) x y)
-            (apply + (for [yy (range y (+ y sz))] (power (dec (+ x sz)) yy)))
-            (apply + (for [xx (range x (dec (+ x sz)))] (power xx (dec (+ y sz)))))))))))
+         (let [dsz (dec sz)]
+           (+ (power-at dsz x y)
+              (power-vslice sz (+ dsz x) y)
+              (power-hslice dsz x (+ dsz y)))))))))
 
 (defn max-square
   [sz]
   (let [power-at-sz (partial power-at sz)
-        extent (- 301 sz)]
-    (reduce (fn [[maxpoint maxpower :as maxes] [x y :as point]]
-              (let [p (power-at-sz x y)]
-                (if (> p maxpower) [point p] maxes)))
+        extent (- 301 sz)
+        grid (for [y (range 1 extent) x (range 1 extent)] [x y])
+        all-powers (map (fn [[x y :as coord]] [coord (power-at-sz x y)]) grid)]
+    (reduce (fn [[maxpoint maxpower :as maxes] [_ pwr :as point-pwr]]
+              (if (> pwr maxpower) point-pwr maxes))
             [nil -1]
-            (for [y (range 1 extent) x (range 1 extent)] [x y]))))
+            all-powers)))
 
 (defn star
   []
@@ -45,12 +64,14 @@
 
 (defn star2
   []
-  (let [[[mx my] size pwr] (reduce (fn [[mpoint msize mpower :as maxes] sz]
-                                     (let [[pt p] (max-square sz)]
-                                       (if (> p mpower) [pt sz p] maxes)))
+  (let [max-squares (pmap #(vector (max-square %) %) (range 1 301))
+        [[mx my] size pwr] (reduce (fn [[mpoint msize mpower :as maxes] [[pt p :as ms] sz]]
+                                     (if (> p mpower) [pt sz p] maxes))
                                    [nil 0 -1]
-                                   (range 1 301))]
+                                   (take-while ffirst max-squares))]
     (str mx "," my "," size)))
 
-(println (time (star)))
-(println (time (star2)))
+(println (star))
+(println (star2))
+
+(shutdown-agents)
