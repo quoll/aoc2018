@@ -87,18 +87,20 @@
   [mm]
   (reduce (fn [acc [k v]] (add-to acc k v)) {} (for [k (keys mm) v (mm k)] [v k])))
 
-(defn reduce-redundancies
-  [[singles multimap]]
-  (let [[singles' multimap'] (extract-singles multimap)
-        reverse-map (reverse-mm multimap')
-        singles (into singles singles')
-        minimized-reversed-map (apply dissoc reverse-map (vals singles))
+(defn reverse-and-scrub
+  [vals-to-remove multimap]
+  (let [[singletons multimap'] (extract-singles multimap)
+        reversed-map (reverse-mm multimap')
+        scrubbed-map (apply dissoc reversed-map (concat vals-to-remove (vals singletons)))]
+    [singletons scrubbed-map]))
 
-        [reverse-singles minimized-reversed-map'] (extract-singles minimized-reversed-map)
-        singles (into singles (map (fn [[k v]] [v k]) reverse-singles))
-        rebuilt-multimap (reverse-mm minimized-reversed-map)
-        next-multimap (apply dissoc rebuilt-multimap (keys singles))]
-    [singles next-multimap]))
+(defn reduce-redundancies
+  [[singleton-pairs multimap]]
+  (let [[next-singletons reversed-map] (reverse-and-scrub (vals singleton-pairs) multimap)
+        singleton-pairs (into singleton-pairs next-singletons)
+        [reversed-singletons next-map] (reverse-and-scrub (keys singleton-pairs) reversed-map)
+        singleton-pairs (into singleton-pairs (map (fn [[k v]] [v k]) reversed-singletons))]
+    [singleton-pairs next-map]))
 
 (defn intersect
   [s1 s2]
