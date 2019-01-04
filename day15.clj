@@ -47,7 +47,7 @@
   (loop [paths [[coord]] step (step-map coord)]
     (let [nstep (dec step)]
       (if (zero? nstep)
-        (set (map (fn [p] [(first p) coord (count p)]) paths))
+        (set (map (fn [p] {:start (first p) :end coord :length (count p)}) paths))
         (let [next-paths (mapcat (fn [path]
                                    (->> (first path) neighbors (filter #(= nstep (step-map %))) (map #(cons % path))))
                                  paths)]
@@ -64,12 +64,12 @@
         init-step-map (reduce #(assoc %1 %2 1) {coord 0} immediate-neighbors)]
     (when-not (some opposing immediate-neighbors)
       (loop [[[current-coord step] :as queue] work-queue step-map init-step-map paths nil]
-        (if (or (empty? queue) (and (seq paths) (> step (nth (first paths) 2))))
-          (let [sorted-paths (sort-by second paths)
-                selected-tail (second (first sorted-paths))]
+        (if (or (empty? queue) (and (seq paths) (> step (:length (first paths)))))
+          (let [sorted-paths (sort-by :end paths)
+                selected-tail (:end (first sorted-paths))]
             (->> paths
-                 (filter #(= selected-tail (second %)))
-                 (sort-by first)
+                 (filter #(= selected-tail (:end %)))
+                 (sort-by :start)
                  first))
           (let [next-queue (pop queue)
                 surrounding (->> (neighboring current-coord) (remove step-map))]
@@ -77,7 +77,7 @@
               (recur next-queue step-map paths)
               (if (some opposing surrounding)
                 (let [next-step-map (reduce #(assoc %1 %2 (inc step)) step-map (remove opposing surrounding))
-                      new-paths (if (or (empty? paths) (= step (nth (first paths) 2)))
+                      new-paths (if (or (empty? paths) (= step (:length (first paths))))
                                   (concat (paths-for next-step-map current-coord) paths)
                                   paths)]
                   (recur next-queue next-step-map new-paths))
@@ -95,9 +95,9 @@
         move-unit (fn [{:keys [elves goblins] :as cavern-map} coord]
                     (let [unit-group (if (elves coord) :elves :goblins)
                           path (find-closest cavern-map unit-group coord)]
-                      (if (seq path)
+                      (if path
                         (let [unit (get-in cavern-map [unit-group coord])
-                              new-coord (first path)]
+                              new-coord (:start path)]
                           [(-> cavern-map
                                 (update unit-group dissoc coord)
                                 (assoc-in [unit-group new-coord] unit))
